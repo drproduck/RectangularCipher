@@ -8,8 +8,8 @@ import java.util.Scanner;
 
 public class trigramtest {
     public static void main(String[] args) throws Exception{
-        String cipherDir = "/home/drproduck/Documents/HMM/simple_cipher/simple_408";
-        String logtrigramDir = "/home/drproduck/Documents/HMM/data/logtrigram.txt";
+        String cipherDir = "simple_cipher/simple_408";
+        String logtrigramDir = "data/logtrigram.txt";
         String trigramDir = "/home/drproduck/Documents/HMM/data/trigram.txt";
         simpleCipher(408, trigramDir, cipherDir);
 //        cipher408(trigramDir);
