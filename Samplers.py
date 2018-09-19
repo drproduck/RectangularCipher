@@ -8,6 +8,25 @@ from collections import Counter
 # suppose ciphertext is generated from plaintext following a Dirichlet process with base dsitribution a sufficiently sparse cateforical, and hyperparameter \alpha
 # p(ct | pt) = \alpha * p(ct | pt) + n(ct,pt) / \alpha
 
+def random_plaintext(self, length):
+    letter_pos = dict()
+    counts = Counter()
+    for pos, c in enumerate(self.cipher_seq):
+        counts[c] += 1
+        if c in letter_pos:
+            letter_pos[c] += [pos]
+        else:
+            letter_pos[c] = [pos]
+    common_letters = 'ETAOINSHRDLCUM'
+    l = len(common_letters)
+    plain_seq = []
+    for i, (c, _) in enumerate(reversed(counts.most_common())):
+        for pos in letter_pos[c]:
+            plain_seq.append(common_letters[l - 1 - i if l - 1 - i >= 0 else 0])
+    plain_seq = tointseq(plain_seq)
+    return plain_seq
+
+
 class Cache():
     def __init__(self, plain_seq, cipher_seq):
         counters = dict()
@@ -49,31 +68,13 @@ class GibbsSampler:
     def __init__(self, cipher_seq, bigram):
         self.T = len(cipher_seq)
         self.cipher_seq = cipher_seq
-        plain_seq = self.random_plaintext(self.T)
+        plain_seq = random_plaintext(self.T)
         self.cache = Cache(plain_seq, cipher_seq)
         self.plain_seq = plain_seq
         self.bigram = bigram
         self.alpha = 0.01
         self.prior = 1.0 / 26
         self.plain_dict = np.arange(26, dtype=int)
-
-    def random_plaintext(self, length):
-        letter_pos = dict()
-        counts = Counter()
-        for pos, c in enumerate(self.cipher_seq):
-            counts[c] += 1
-            if c in letter_pos:
-                letter_pos[c] += [pos]
-            else:
-                letter_pos[c] = [pos]
-        common_letters = 'ETAOINSHRDLCUM'
-        l = len(common_letters)
-        plain_seq = []
-        for i, (c, _) in enumerate(reversed(counts.most_common())):
-            for pos in letter_pos[c]:
-                plain_seq.append(common_letters[l - 1 - i if l - 1 - i >= 0 else 0])
-        plain_seq = tointseq(plain_seq)
-        return plain_seq
 
     def get_gap_probability(self, pos):
         """
@@ -141,6 +142,10 @@ class GibbsSampler:
 
     def get_likelihood(self):
         pass
+
+
+def BlockSamplers():
+    pass
 
 
 def main():
