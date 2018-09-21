@@ -1,7 +1,9 @@
 import numpy as np
 from ios import *
 from collections import Counter
-
+from suffstat import *
+from transition import *
+from time import time
 
 # pt = plaintext
 # ct = ciphertext
@@ -144,16 +146,89 @@ class GibbsSampler:
         pass
 
 
-def BlockSamplers():
-    pass
+class BlockSampler:
+    def __init__(self, n_hidden, n_obs, hidden_seq_list, obs_seq_list, transition_kernel):
+        self.transition = transition_kernel
+        self.emission = EmissionKernel(n_hidden, n_obs)
+        assert (len(hidden_seq_list) == len(obs_seq_list))
+        for hidden_seq, obs_seq in zip(hidden_seq_list, obs_seq_list):
+            self.emission.increment(hidden_seq, obs_seq)
+        self.n_hidden = n_hidden
+        self.n_obs = n_obs
+        self.hidden_seq_list = hidden_seq_list
+        self.obs_seq_list = obs_seq_list
 
+    def emit(self, h, o, dp_param=0.01):
+        """
+        rich-get-richer emission
+        :param h: hidden
+        :param o: observed
+        :param dp_param: dirichlet process scale parameter
+        :return:
+        """
+        h_emit = self.emission.get(h)
+        return (dp_param * 1.0 / self.n_hidden + h_emit[o]) / (dp_param + h_emit.sum())
+
+    def transit(self, h1, h2):
+        return self.transition.get_transition_prob(h2, h1)
+
+    def forward_backward_bigram_blocksample(self, hidden_seq, obs_seq):
+        """
+        first, calculate p(h_{t-1}=r,h_t = s| d_1^{t})
+         = p(h_{t-1}=r,h_t=s,d_t| d_1^{t-1}) / C(h_{t-1},h_t)
+         = p(h_{t-1}=r|d_1^{t-1}) p(h_t=s| h_{t-1}=r) p(d_t| h_t=s) / C(h_{t-1},h_t)
+
+         Second, calculate p(h_t=r| d_1^t) (is P[i-1,:,r].sum())
+
+         Third, sample p(\bold{h}| d_1^n) = p(h_n| d_1^n) \prod_t p(h_{n-t}| h_{n-t+1}^n, d_1^n)
+         = p(h_n| d_1^n) \prod_t p(h_{n-t}| h_{n-t+1}, d_1^{n-t+1})
+
+         where p(h_{n-t}=r| h_{n-t+1}, d_1^{n-t+1}) ~ p(h_{n-t}=r, h_{n-t+1}| d_1^{n-t+1}) see first step
+        :param hidden_seq:
+        :param obs_seq:
+        :return:
+        """
+        l = len(hidden_seq)
+        P = np.zeros([l - 1, self.n_hidden, self.n_hidden], dtype=float)
+        self.emission.decrement(hidden_seq, obs_seq)
+        for i in range(l - 1):
+            if i == 0:
+                for r in range(self.n_hidden):
+                    for s in range(self.n_hidden):
+                        P[i, r, s] = self.transit(r, s) * self.emit(s, obs_seq[i])
+            else:
+                for r in range(self.n_hidden):
+                    for s in range(self.n_hidden):
+                        P[i, r, s] = P[i - 1, :, r].sum() * self.transit(r, s) * self.emit(s, obs_seq[i])
+
+            # normalize
+            P[i, :, :] /= P[i, :, :].sum(axis=(0, 1))
+
+        # sampling
+        pn = P[l - 2, :, :].sum(axis=0)
+        hidden_seq[l - 1] = np.random.choice(self.n_hidden, p=pn)
+        for i in reversed(range(l - 1)):
+            pi = P[i, :, hidden_seq[i + 1]]
+            hidden_seq[i] = np.random.choice(self.n_hidden, p=pi / pi.sum())
+
+        return hidden_seq
+
+    def sample(self, n_iter):
+        for it in range(n_iter):
+            for i, (h_seq, o_seq) in enumerate(zip(self.hidden_seq_list, self.obs_seq_list)):
+                t0 = time()
+                seq = self.forward_backward_bigram_blocksample(h_seq, o_seq)
+                print('iter',it,'sentence',i,'time',time() - t0)
+                print(tocharseq(seq))
 
 def main():
     plain_seq = tointseq(get_plaintext('408plaincleaned'))
     cipher_seq = get_ciphertext('408ciphercleaned')
     bigram = get_bigram('data/processed/bigram.npy')
-    sampler = GibbsSampler(cipher_seq, bigram)
-    sampler.sample(5000)
+    # sampler = GibbsSampler(cipher_seq, bigram)
+    transition = BigramKernel(bigram)
+    # sampler = BlockSampler(26, len(set(plain_seq)))
+    # sampler.sample(5000)
 
 
 if __name__ == '__main__':

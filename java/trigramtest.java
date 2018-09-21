@@ -1,23 +1,20 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Arrays;
 import java.util.Random;
 import java.util.Scanner;
 
 public class trigramtest {
     public static void main(String[] args) throws Exception{
-        String cipherDir = "simple_cipher/simple_408";
-        String logtrigramDir = "data/logtrigram.txt";
-        String trigramDir = "/home/drproduck/Documents/HMM/data/trigram.txt";
-        simpleCipher(408, trigramDir, cipherDir);
-//        cipher408(trigramDir);
+        String cipherDir = "../data/simple_cipher/simple_408";
+        String logtrigramDir = "../data/logtrigram.txt";
+        String trigramDir = "../data/trigram.txt";
+//        simpleCipher(408, trigramDir, cipherDir);
+        cipher408(trigramDir);
     }
 
     public static void cipher408(String trigramDir) throws Exception {
-        String cipherDir = "/home/drproduck/Documents/HMM/data/408ciphercleaned";
-        String plainDir = "/home/drproduck/Documents/HMM/data/408plaincleaned";
+        String cipherDir = "../data/408ciphercleaned";
+        String plainDir = "../data/408plaincleaned";
         Random rng = new Random(2018);
 //        double[][] A = util.digraph();
         double[][][] A = util.readTrigram(trigramDir);
@@ -66,11 +63,11 @@ public class trigramtest {
                 curProb = HMM.logProb;
 //                int[] argmax = new int[nw];
 //                for (int k = 0; k < nw; k++) {
-//                    double max = HMM.B[0][k];
+//                    double max = exclude.HMM.B[0][k];
 //                    int arg = 0;
 //                    for (int l = 1; l < nt; l++) {
-//                        if (max < HMM.B[l][k]) {
-//                            max = HMM.B[l][k];
+//                        if (max < exclude.HMM.B[l][k]) {
+//                            max = exclude.HMM.B[l][k];
 //                            arg = l;
 //                        }
 //                    }

@@ -1,4 +1,5 @@
 from collections import Counter
+import numpy as np
 
 
 class Cache:
@@ -50,3 +51,42 @@ class Cache:
             return 0, 0
         else:
             return sum(self.counters[plain_char].values()), self.counters[plain_char][cipher_char]
+
+
+class EmissionKernel:
+    def __init__(self, n_hidden, n_obs, plain_seq=None, cipher_seq=None):
+        self.emission = np.zeros([n_hidden, n_obs], dtype=int)
+        if plain_seq is not None and cipher_seq is not None:
+            for p, c in zip(plain_seq, cipher_seq):
+                self.emission[p, c] += 1
+
+    def _increment_char(self, plain_char, cipher_char):
+        self.emission[plain_char, cipher_char] += 1
+        return self.emission[plain_char, cipher_char]
+
+    def increment(self, plain, cipher):
+        try:
+            for p, c in zip(plain, cipher):
+                self._increment_char(p, c)
+        except TypeError:
+            self._increment_char(plain, cipher)
+
+    def _decrement_char(self, plain_char, cipher_char):
+        assert(self.emission[plain_char, cipher_char] >= 0)
+        if self.emission[plain_char, cipher_char] == 0:
+            return 0
+        else:
+            self.emission[plain_char, cipher_char] -= 1
+            return self.emission[plain_char, cipher_char]
+
+    def decrement(self, plain, cipher):
+        try:
+            for p, c in zip(plain, cipher):
+                self._decrement_char(p, c)
+        except TypeError:
+            self._decrement_char(plain, cipher)
+
+    def get(self, plain_char):
+        return self.emission[plain_char, :]
+
+

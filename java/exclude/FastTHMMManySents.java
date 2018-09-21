@@ -6,11 +6,10 @@ import java.util.Random;
  * Trigram exclude.HMM. a similar normalization is used instead of log-scale and the ensuing logSumExp.
  */
 
-public class FastTHMM {
+public class FastTHMMManySents {
 
     double[][][] A;
     double[][] B;
-    int len;
     int nt;
     int nw;
     double[][][] ap, bt;
@@ -18,14 +17,13 @@ public class FastTHMM {
     double[][][] digamma;
     double[][][][] trigamma;
     double[][] gamma;
-    int[] seq;
+    int[][] sentences;
     double logProb;
     double oldLogProb;
     boolean firstRestart;
     static double eps = 0.1; // smoothing constant
 
-    public FastTHMM(double[][][] transition, int nTag, int nWord, int[] sequence) {
-        len = sequence.length;
+    public FastTHMMManySents(double[][][] transition, int nTag, int nWord, int[][] sentences) {
         nt = nTag;
         nw = nWord;
         A = transition;
@@ -36,12 +34,17 @@ public class FastTHMM {
         digamma = new double[len][nt][nt];
         trigamma = new double[len][nt][nt][nt];
         gamma = new double[len][nt];
-        seq = sequence;
+        this.sentences = sentences;
 
         firstRestart = true;
     }
 
-    public void alpha() {
+//    public getSentencesStatistics(int seq){
+//
+//    }
+
+    private void alpha(int[] seq) {
+        int len = seq.length;
         c[0] = 0;
         for (int i = 0; i < nt; i++) {
             for (int j = 0; j < nt; j++) {
@@ -83,7 +86,8 @@ public class FastTHMM {
         return logProb;
     }
 
-    public void beta() {
+    public void beta(int[] seq) {
+        int len = seq.length;
         // nominal code
         for (int i = 0; i < nt; i++) {
             for (int j = 0; j < nt; j++) {
@@ -311,7 +315,7 @@ public class FastTHMM {
 
         double[][][] trigram = util.readTrigram("/home/drproduck/Documents/exclude.HMM/data/trigram.txt");
         long start = System.nanoTime();
-        FastTHMM FHMM = new FastTHMM(trigram, nTag, nWord, ct);
+        FastTHMMManySents FHMM = new FastTHMMManySents(trigram, nTag, nWord, ct);
         long stop = System.nanoTime();
         FHMM.train(200, false, -3076155353333121539L, true);
 //        FHMM.train(200, false, 8781939572407739913L, true);
