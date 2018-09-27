@@ -1,7 +1,6 @@
 from collections import Counter
 import numpy as np
 
-
 class Cache:
     def __init__(self, plain_seq, cipher_seq):
         counters = dict()
@@ -16,7 +15,7 @@ class Cache:
             self.counters[plain_char] = Counter()
         return self.counters[plain_char]
 
-    def _increment_char(self, plain_char, cipher_char):
+    def increment_char(self, plain_char, cipher_char):
         cipher_counts = self.get_counter(plain_char)
         cipher_counts[cipher_char] += 1
         return cipher_counts[cipher_char]
@@ -28,7 +27,7 @@ class Cache:
         except TypeError:
             self._increment_char(plain, cipher)
 
-    def _decrement_char(self, plain_char, cipher_char):
+    def decrement_char(self, plain_char, cipher_char):
         cipher_counts = self.get_counter(plain_char)
         if cipher_char not in cipher_counts:
             return 0
@@ -71,7 +70,7 @@ class EmissionKernel:
         except TypeError:
             self._increment_char(plain, cipher)
 
-    def _decrement_char(self, plain_char, cipher_char):
+    def decrement_char(self, plain_char, cipher_char):
         assert(self.emission[plain_char, cipher_char] >= 0)
         if self.emission[plain_char, cipher_char] == 0:
             return 0

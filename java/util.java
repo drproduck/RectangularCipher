@@ -42,7 +42,7 @@ public class util {
         return res;
     }
 
-    // display matrix in a more decorous way
+    // display cipher in a more decorous way
 
     public static String display2(double[][] array) {
         StringBuilder sb = new StringBuilder();

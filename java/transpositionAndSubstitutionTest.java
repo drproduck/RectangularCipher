@@ -35,20 +35,10 @@ public class transpositionAndSubstitutionTest {
             }
         }
         int[] perm = Permutations.randomPermutation(17);
-        int[][] permutedCipher = makePermutationKey(cipher, perm);
+        int[][] permutedCipher = RectangularCipher.transpose(cipher, perm);
 
         RectangularCipher cipherSolver = new RectangularCipher(permutedCipher, bigram, trigram);
         System.out.println("plain text score = "+cipherSolver.logProbArray(plain));
         cipherSolver.iterativeDecipher(10);
-    }
-
-    static int[][] makePermutationKey(int[][] cipher, int[] perm){
-        int[][] permuted = new int[cipher.length][cipher[0].length];
-        for (int i = 0; i < cipher.length; i++) {
-            for (int j = 0; j < cipher[0].length; j++) {
-                permuted[i][j] = cipher[i][perm[j]];
-            }
-        }
-        return permuted;
     }
 }

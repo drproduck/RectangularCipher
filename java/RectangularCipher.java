@@ -14,11 +14,11 @@ import java.util.*;
 import java.util.Random;
 
 public class RectangularCipher {
-    public int[][] oldmatrix;
-    public int[][] matrix;
+    public int[][] cipher;
     int nrows;
     int ncols;
     long rng = 2018;
+    int[][] proposal;
 
     FastTHMM hmmSolver;
     TravelingSalesmanSolver tsSolver = new TravelingSalesmanSolver();
@@ -26,34 +26,38 @@ public class RectangularCipher {
     double[][] bigram;
     double[][][] trigram;
 
-    public RectangularCipher(int[][] arr, double[][] bigram, double[][][] trigram){
-        oldmatrix = arr.clone();
-        nrows = oldmatrix.length;
-        for (int i = 0; i < arr.length; i++) {
-            assert(arr[0].length == arr[i].length);
+    public RectangularCipher(int[][] cipher, double[][] bigram, double[][][] trigram){
+        nrows = cipher.length;
+        for (int i = 0; i < cipher.length; i++) {
+            assert(cipher[0].length == cipher[i].length);
         }
-        ncols = arr[0].length;
-        matrix = arr.clone();
+        ncols = cipher[0].length;
+        this.cipher = cipher.clone();
 
         this.bigram = bigram;
         this.trigram =trigram;
     }
 
-    public int[][] transpose(int[] cindices){
-        assert(cindices.length == ncols);
-        int[][] newarray = new int[nrows][ncols];
-        for (int i = 0; i < nrows; i++) {
-            for (int j = 0; j < ncols; j++) {
-                newarray[i][j] = matrix[i][cindices[j]];
+    /*
+    permute order of columns of the matrix based on new column indices
+     */
+    static int[][] transpose(int[][] matrix, int[] columnIndices){
+        int r = matrix.length;
+        int c = matrix[0].length;
+        assert(columnIndices.length == c);
+        int[][] newArray = new int[r][c];
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                newArray[i][j] = matrix[i][columnIndices[j]];
             }
         }
-        return newarray;
+        return newArray;
     }
 
     public int[] getCol(int c){
         int[] res = new int[nrows];
         for (int i = 0; i < nrows; i++) {
-            res[i] = matrix[i][c];
+            res[i] = cipher[i][c];
         }
         return res;
     }
@@ -61,29 +65,42 @@ public class RectangularCipher {
     public void setCol(int c, int[] val){
         assert(val.length == nrows);
         for (int i = 0; i < nrows; i++) {
-            matrix[i][c] = val[i];
+            cipher[i][c] = val[i];
         }
     }
 
-    public int[] flatten(){
-        int[] res = new int[nrows * ncols];
-        for (int i = 0; i < nrows; i++) {
-            for (int j = 0; j < ncols; j++) {
-                res[i * ncols + j] = matrix[i][j];
+    /*
+    reshape 2d matrix into flat array
+     */
+     static int[] flatten(int[][] matrix){
+        int r = matrix.length;
+        int c = matrix[0].length;
+        int[] res = new int[r * c];
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                res[i * c + j] = matrix[i][j];
             }
         }
         return res;
     }
 
-    public void shapen(int[] arr){
-        for (int i = 0; i < nrows; i++) {
-            for (int j = 0; j < ncols; j++) {
-                matrix[i][j] = arr[i * ncols + j];
+    /*
+    reshape the flat array into 2d array of same shape as the cipher matrix
+     */
+    static int[][] reshape(int[] arr, int r, int c){
+        int[][] res = new int[r][c];
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                res[i][j] = arr[i * c + j];
             }
         }
+        return res;
     }
 
-    public double getCol2ColDistance(int i, int j){
+    /*
+    Get distance of 2 columns based on bigrams between them
+     */
+    public double getCol2ColDistance(int[][] matrix, int i, int j){
         double logP = 0;
         for (int k = 0; k < nrows; k++) {
             logP += FastMath.log(bigram[matrix[k][i]][matrix[k][j]]);
@@ -91,64 +108,92 @@ public class RectangularCipher {
         return logP;
     }
 
-    public double[][] getCol2ColDistanceMatrix(){
+    /*
+    return matrix of distances between all pairs of cols
+     */
+    public double[][] getCol2ColDistanceMatrix(int[][] matrix){
         double[][] distance = new double[ncols][ncols];
         for (int i = 0; i < ncols; i++) {
             for (int j = 0; j < ncols; j++) {
-                distance[i][j] = getCol2ColDistance(i,j);
+                distance[i][j] = getCol2ColDistance(matrix, i,j);
             }
         }
         return distance;
     }
 
-    public double deSubstitution(int nHidden, int nObs){
-        int[] seq = flatten();
-        hmmSolver = new FastTHMM(trigram, nHidden, nObs, seq);
+    public int[] deSubstitution(int[] cipher, int nHidden, int nObs){
+        hmmSolver = new FastTHMM(trigram, nHidden, nObs, cipher);
         hmmSolver.train(200, false,rng, false);
-        int[] proposal = hmmSolver.viterbi();
-        shapen(proposal);
-        return hmmSolver.logProbFromAlpha();
+        return hmmSolver.viterbi();
     }
 
-    public double deTransposition(){
-        double[][] distance = getCol2ColDistanceMatrix();
+    public int[] deTransposition(int[][] matrix){
+        double[][] distance = getCol2ColDistanceMatrix(matrix);
         tsSolver.solve(ncols, distance);
         int[] tour = tsSolver.getTour();
-        matrix = transpose(tour);
-        return tsSolver.getScore();
+        boolean changed = false;
+        for (int i = 0; i < tour.length; i++) {
+            if (tour[i] != i){
+                changed = true;
+                break;
+            }
+        }
+        if (!changed) System.out.println("already at optimal value");
+        return tour;
     }
 
+    /*
+    MAIN PROCEDURE
+     */
     public double[] iterativeDecipher(int iter){
         LinkedList<Double> logScore = new LinkedList<>();
         double currScore = Double.NEGATIVE_INFINITY;
          logScore.add(currScore);
         for (int i = 0; i < iter; i++) {
             System.out.println("Iteration "+i);
-            oldmatrix = util.deepClone(matrix);
+
+            int[] seq = flatten(cipher);
             System.out.print("Solving substitution...");
-            deSubstitution(26, 26);
+            seq = deSubstitution(seq, 26, 26);
+            proposal = reshape(seq, nrows, ncols);
+
             currScore = logProb();
             System.out.println("Score = "+currScore);
-            System.out.println(Arrays.deepToString(matrix));
-//            if ( logScore.getLast() >= currScore){
-//                matrix = oldmatrix;
-//                break;
-//            }
+            System.out.println(toString(proposal));
+            if ( logScore.getLast() >= currScore){
+                System.out.println("log prob not increasing");
+                break;
+            }
              logScore.add(currScore);
+
             System.out.print("Solving transposition...");
-            deTransposition();
+            int[] tour = deTransposition(proposal);
+            cipher = transpose(cipher, tour);
+            proposal = transpose(proposal, tour);
+
             currScore = logProb();
             System.out.println("Score = "+currScore);
-            System.out.println(Arrays.deepToString(matrix));
-//            if ( logScore.getLast() >= currScore){
-//                matrix = oldmatrix;
-//                break;
-//            }
+            System.out.println(toString(proposal));
+            if ( logScore.getLast() >= currScore){
+                System.out.println("log prob not increasing");
+            }
              logScore.add(currScore);
         }
         double[] arrayScores =  logScore.stream().mapToDouble(i->i).toArray();
 
         return arrayScores;
+    }
+
+    public static String toString(int[][] intMatrix) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < intMatrix.length; i++) {
+            for (int j = 0; j < intMatrix[0].length; j++) {
+                sb.append((char) (intMatrix[i][j] + 65));
+                sb.append(' ');
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
     }
 
     public static int[][] readFromFile(String cipherDir, int nrows, int ncols) throws FileNotFoundException {
@@ -159,18 +204,15 @@ public class RectangularCipher {
                 plain[i][j] = reader.nextInt();
             }
         }
+        System.out.println("plain text\n"+toString(plain));
         int[][] cipher = new int[nrows][ncols];
         for (int i = 0; i < nrows; i++) {
             for (int j = 0; j < ncols; j++) {
                 plain[i][j] = reader.nextInt();
             }
         }
+        System.out.println("cipher text\n"+toString(cipher));
         return cipher;
-    }
-
-    public static int[] permutation(int range){
-        int[] perm = Permutations.randomPermutation(range);
-        return perm;
     }
 
     public static int[] permuteKey(String method, long seed) {
@@ -193,8 +235,11 @@ public class RectangularCipher {
         return dict;
     }
 
+    /*
+    compute log probability of current proposal based on trigram
+     */
     public double logProb(){
-        int[] seq = flatten();
+        int[] seq = flatten(proposal);
         double lp = 0;
         for (int i = 2; i < seq.length; i++) {
             lp += FastMath.log(trigram[seq[i-2]][seq[i-1]][seq[i]]);

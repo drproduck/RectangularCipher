@@ -5,10 +5,10 @@ from suffstat import *
 from transition import *
 from time import time
 
-# pt = plaintext
-# ct = ciphertext
-# suppose ciphertext is generated from plaintext following a Dirichlet process with base dsitribution a sufficiently sparse cateforical, and hyperparameter \alpha
-# p(ct | pt) = \alpha * p(ct | pt) + n(ct,pt) / \alpha
+
+# pt = plaintext ct = ciphertext suppose ciphertext is generated from plaintext following a Dirichlet process with
+# base dsitribution a sufficiently sparse cateforical, and hyperparameter \alpha p(ct | pt) = \alpha * p(ct | pt) +
+# n(ct,pt) / \alpha
 
 def random_plaintext(self, length):
     letter_pos = dict()
@@ -218,15 +218,16 @@ class BlockSampler:
             for i, (h_seq, o_seq) in enumerate(zip(self.hidden_seq_list, self.obs_seq_list)):
                 t0 = time()
                 seq = self.forward_backward_bigram_blocksample(h_seq, o_seq)
-                print('iter',it,'sentence',i,'time',time() - t0)
+                print('iter', it, 'sentence', i, 'time', time() - t0)
                 print(tocharseq(seq))
+
 
 def main():
     plain_seq = tointseq(get_plaintext('408plaincleaned'))
     cipher_seq = get_ciphertext('408ciphercleaned')
     bigram = get_bigram('data/processed/bigram.npy')
     # sampler = GibbsSampler(cipher_seq, bigram)
-    transition = BigramKernel(bigram)
+    transition = BigGamKernel(bigram)
     # sampler = BlockSampler(26, len(set(plain_seq)))
     # sampler.sample(5000)
 
